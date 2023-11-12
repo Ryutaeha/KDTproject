@@ -30,17 +30,42 @@ internal class Date
     public static string[] jobClass = { "전사", "사냥꾼" };
     public static string[] campMenu = { "상태보기", "인벤토리", "상점", "강화", "탐험", "끝내기" };
     public static string[] campMap = { "", "", "★", "♨", "◈" };
-    public static string[] monster = { "도적", "총잡이", "마법사", "이세카이 용사" };
+    public static string[] BattleKindSelect = { "전투", "휴식", "돌아가기" };
+    public static string[] BattleSceneSelect = { "평원", "폐허", "던전", "돌아가기" };
+    public static string[] BattleScene = { "전투", "주사위 굴리기", "도망가기" };
     public static string[] inventory = { "무기", "방어구", "돌아가기" };
     public static string[] shop = { "구매", "판매", "돌아가기" };
+    public static string[] Rest = { "황금 햇빛 여관", "검은 무쇠 여관", "늙은 들개 여관","깊은 달빛 여관", "돌아가기"};
     
-    public static Dictionary<int, string[]> campEvents = new Dictionary<int, string[]>
+    /// <summary>
+    /// 이름 공격력 방어력 체력 드랍골드 설명
+    /// </summary>
+    public static Dictionary<int, string[]> Evil_Rins = new Dictionary<int, string[]>
     {
-        { 0 , new string[] { "Event1Data1", "Event1Data2", "Event1Data3" } },
-        { 1 , new string[] { "Event2Data1", "Event2Data2", "Event2Data3" } },
-        { 2 , new string[] { "Event3Data1", "Event3Data2", "Event3Data3" } },
-        { 3 , new string[] { "Event4Data1", "Event4Data2", "Event4Data3" } }
+        { 0 , new string[] { "고블린", "10", "10","30","50", "귀여운(?) 고블린이다." ,"1"} },
+        { 1 , new string[] { "놀", "15", "15", "40", "70", "댕댕이가 두발로 걸어다닌다." ,"2"} },
+        { 2 , new string[] {"오우거", "20", "20", "80", "120", "오우거! 가고 싶은데로 간다.", "5" } },
     };
+
+    public static Dictionary<int, string[]> Undead = new Dictionary<int, string[]>
+    {
+        { 0 , new string[] {"스켈레톤", "40", "10", "60", "150", "포션(사골) 재료인거 같다.", "4" } },
+        { 1 , new string[] {"좀비", "40", "30", "70", "180", "조금은 느린거 같다.", "5" } },
+        { 2 , new string[] {"고스트", "65", "20", "100", "220", "가끔보면 귀엽게 생겼다.", "7" } },
+    };
+
+    public static Dictionary<int, string[]> Devil = new Dictionary<int, string[]>
+    {
+        { 0 , new string[] {"임프", "100", "30", "120", "240", "소매치기 조심하세욧!", "5" } },
+        { 1 , new string[] {"가고일", "75", "150", "150", "300", "그 동상에서 눈을 때면 안된다.", "6" } },
+        { 2 , new string[] {"서큐버스", "200", "100", "250", "1000" , "서큐버스가 좀 이상하게 생겼다.", "10" } },
+    };
+
+    public static Dictionary<int, string[]> Run = new Dictionary<int, string[]>
+    {
+
+    };
+
     public static string[] Merchant =
     {
         "                       ',,.:kxO",
@@ -109,4 +134,8 @@ internal class Date
 
 }
 
+internal class AnimationSkip
+{
+    public static bool firstLord;
+}
 

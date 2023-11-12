@@ -3,10 +3,14 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Net;
+using System.Reflection.Emit;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using static Character;
 using static CharacterSubMenu;
+using static KDTproject.Mosters;
 
 
 internal class keyEvent
@@ -89,7 +93,19 @@ internal class keyEvent
         return (false, selectMenu);
     }
 
-    
+    internal static void Skip(string boolName)
+    {
+        if (Console.KeyAvailable)
+        {
+            
+            ConsoleKeyInfo keyInfo = Console.ReadKey(true);
+            // X 키가 입력됨
+            if (keyInfo.Key == ConsoleKey.Enter)
+            {
+                typeof(AnimationSkip).GetField(boolName).SetValue(null, false);
+            }
+        }
+    }
 }
 
 internal class Draw
@@ -192,10 +208,554 @@ internal class Draw
         Draw.WriteText("===========================================================", 2, 9);
     }
 
+    internal static void MonsterInfo(Mosters.Moster moster)
+    {
+        Draw.WriteText("Lv. "+moster.Level+" "+moster.Name, 6, 7);
+        Draw.WriteText("체력 : "+moster.Health.ToString(), 6, 9);
+        Draw.WriteText("공격력 : " + moster.AttackForce.ToString(), 20, 9);
+        Draw.WriteText("방어력 : " + moster.Defense.ToString(), 34, 9);
+        Draw.WriteText("한줄요약 : " + moster.Infomation, 6, 11);
+    }
+
+    internal static int BattleInfo(Mosters.Moster moster, int diceNum)
+    {
+        int mosterDemage=0;
+        double victoryPoint;
+        //몬스터 데미지 : 몬스터 공격력 - 플레이어 방어력 + 방어구
+        if (GameScene.Equipment[1] > -1)
+            mosterDemage = Math.Max(moster.AttackForce - (int)((GameScene.player.Defense + GameScene.armors[GameScene.Equipment[1]].ItemAbility)*((double)diceNum/10)), 0);
+        else
+            mosterDemage = Math.Max(moster.AttackForce - (int)(GameScene.player.Defense * ((double)diceNum / 10)), 0);
+
+        //플레이어 데미지 : 플레이어 공격력+무기 - 몬스터 방어력
+        int PlayerDemage = 0;
+        if (GameScene.Equipment[0] > -1)
+            PlayerDemage = Math.Max((int)((GameScene.player.AttackForce + GameScene.weapons[GameScene.Equipment[0]].ItemAbility) * ((double)diceNum / 10)) - moster.Defense, 0);
+        else
+            PlayerDemage = Math.Max((int)(GameScene.player.AttackForce * ((double)diceNum / 10)) - moster.Defense, 0);
+
+
+
+        if (PlayerDemage < 0) PlayerDemage = 0;
+
+        int sumDamege = mosterDemage + PlayerDemage;
+        if (sumDamege == 0)  victoryPoint = 50;
+        else victoryPoint = Math.Round(((double)PlayerDemage / (mosterDemage + PlayerDemage)) * 100, 2);
+
+        WriteText("이길 확률 : ", 6, 15);
+        WriteText("%", 25, 15);
+        WriteText("[   ] : ", 6, 18);
+        Console.ForegroundColor = ConsoleColor.DarkGreen;
+        WriteText("TIP", 7, 18);
+        Console.ResetColor();
+
+        if (victoryPoint == 0)
+        {
+            
+            Console.ForegroundColor = ConsoleColor.Red;
+            WriteText("몬스터!!! 피해욧!!!!", 14, 18);
+            WriteText($"{victoryPoint.ToString("N2"),6}", 18, 15);
+            Console.ResetColor();
+        }
+        else if (victoryPoint < 31)
+        {
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            WriteText("도망가는게 현명할수도 있습니다.", 14, 18);
+            WriteText($"{victoryPoint.ToString("N2"),6}", 18, 15);
+            Console.ResetColor();
+        }
+        else if(victoryPoint < 61)
+        {
+            Console.ForegroundColor = ConsoleColor.DarkCyan;
+            WriteText("갈땐 가더라도 주사위 한번은 괜찮잖아?", 14, 18);
+            WriteText($"{victoryPoint.ToString("N2"),6}", 18, 15);
+            Console.ResetColor();
+        }
+        else if(victoryPoint < 100)
+        {
+            Console.ForegroundColor = ConsoleColor.Green;
+            WriteText("이런 나 좀 쌜지도?", 14, 18);
+            WriteText($"{victoryPoint.ToString("N2"),6}", 18, 15);
+            Console.ResetColor();
+        }
+        else if(victoryPoint == 100)
+        {
+            Console.ForegroundColor = ConsoleColor.Blue;
+            WriteText("이녀석 한대만 맞어 안되겠어 두대", 14, 18);
+            WriteText($"{victoryPoint.ToString("N2"),6}", 18, 15);
+            Console.ResetColor();
+        }
+        return (int)victoryPoint * 100;
+    }
+
+    internal static void BattleEndScene(int victoryProbability, Mosters.Moster moster, ConsoleKeyInfo keyInfo)
+    {
+        ClearBox(Date.map);
+
+        bool victory;
+
+        int spoils;
+
+        int dropExp;
+        int victoryCkeck = new Random().Next(0, 10001);
+        if (victoryProbability < victoryCkeck)
+        {
+            victory = false;
+            dropExp = (moster.DropExp / 2);
+            GameScene.player.EXP += dropExp;
+            spoils = (moster.Attack - GameScene.player.Defense < 10) ? 10 : (moster.Attack - GameScene.player.Defense);
+            GameScene.player.Health -= spoils;
+            if (GameScene.player.Health < 0) GameScene.player.Health = 0;
+        }
+        else
+        {
+            victory = true;
+            dropExp =  moster.DropExp;
+            GameScene.player.EXP += dropExp;
+            spoils =  (moster.Gold * GameScene.player.GoldDrop / 100);
+            GameScene.player.Gold += spoils + moster.Gold;
+
+
+        }
+
+        int LevelUp = GameScene.player.LevelUp();
+
+        string battleResult = victory ? "Victory" : "Defeat";
+
+        string playerLevel = $"Level : {GameScene.player.Level} {(LevelUp == 0 ? "" : "(+" + LevelUp + ")")}            EXP : {GameScene.player.EXP} {(dropExp == 0 ? "" : "(+" + dropExp + ")")}/{GameScene.player.NextEXP}";
+        string playerHealth = $"체력 : {GameScene.player.Health} {(victory ? "" : "(-" + spoils + ")")} / {GameScene.player.MaxHealth} {(LevelUp == 0 ? "" : "(+" + LevelUp * (GameScene.player.JobClass == "전사" ? 10 : 5) + ")")} ";
+        string playerGold = $"골드 : {GameScene.player.Gold} {(victory ? "(+" + spoils + ")" : "" )}       추가 골드 획득량 : {GameScene.player.GoldDrop} {(LevelUp == 0 ? "" : "(+" + LevelUp * (GameScene.player.JobClass == "전사" ? 5 : 10) + ")")}%"; ;
+
+
+        Console.ForegroundColor = victory ? ConsoleColor.Blue : ConsoleColor.Red;
+        WriteText(battleResult.PadLeft((62+battleResult.Length)/2), 2,8);
+        Console.ResetColor();
+
+
+        WriteText(playerLevel.PadLeft((62 + playerLevel.Length) / 2), 2, 11);
+
+        WriteText(playerHealth.PadLeft((62 + playerHealth.Length) / 2), 2, 13);
+
+        WriteText(playerGold.PadLeft((53 + playerGold.Length) / 2), 2, 15);
+
+        SubMethod.SimplePlayerInfo(GameScene.player);
+
+        WriteText("계속 하시려면 'Enter'키를 입력하세요!", 15, 22);
+
+        while (true)
+        {
+            keyInfo = Console.ReadKey(true);
+            // X 키가 입력됨
+            if (keyInfo.Key == ConsoleKey.Enter)
+            {
+                return;
+            }
+
+        }
+
+    }
+
+    internal static void WeaponList( string enhance, string view, int yPosition)
+    {
+        List<Weapon> weapons = GameScene.weapons;
+        Draw.ItemListHeader(enhance);
+        for (int i = 0; i < weapons.Count; i++)
+        {
+            ItemList(weapons[i], yPosition, i, view);
+            if (GameScene.Equipment[0] == i && view != "Enhance") WriteText($"[E]", 55, yPosition + (i * 2));
+            if (view == "Enhance") WriteText($"[{weapons[i].MaxEnhance}]", 55, yPosition + (i * 2));
+        }
+        Draw.WriteText("뒤로가기", 46, 22);
+    }
+
+    internal static void ArmorList(string enhance, string view, int yPosition)
+    {
+        List<Armor> armors = GameScene.armors;
+
+        Draw.ItemListHeader(enhance);
+        for (int i = 0; i < armors.Count; i++)
+        {
+            ItemList(armors[i], yPosition, i, view);
+            if (GameScene.Equipment[1] == i) WriteText($"[E]", 55, yPosition + (i * 2));
+            if (view == "Enhance") WriteText($"[{armors[i].MaxEnhance}]", 55, yPosition + (i * 2));
+        }
+        Draw.WriteText("뒤로가기", 46, 22);
+    }
 }
 
 internal class subScene
 {
+    /// <summary>
+    /// 전투 or 휴식
+    /// </summary>
+    /// <param name="keyInfo"></param>
+    /// <returns></returns>
+    internal static bool BattleKindSelect(ConsoleKeyInfo keyInfo)
+    {
+        
+        int selectMenu = 0;
+        while (true)
+        {
+            Draw.ClearBox(Date.map);
+            Draw.ClearBox(Date.selectCampMenu);
+            keyEvent.SelectMenu(Date.BattleKindSelect, selectMenu, 70, 7, 3, true);
+
+            (bool sceneCheck, int selectMenuCheck) = keyEvent.keyCheck(keyInfo, selectMenu, Date.BattleKindSelect.Length);
+
+            selectMenu = selectMenuCheck;
+            if (sceneCheck)
+            {
+                switch (selectMenu)
+                {
+                    case 0:
+                        if (BattleSceneSelect(keyInfo)) return true;
+                        else break;
+                        
+                    case 1:
+                        if(Rest(keyInfo)) return true;
+                        else return false;                        
+                    case 2:
+                        return false;
+                }
+            }
+        }
+
+    }
+
+    /// <summary>
+    /// 맵고르기
+    /// </summary>
+    /// <param name="keyInfo"></param>
+    internal static bool BattleSceneSelect(ConsoleKeyInfo keyInfo)
+    {
+        string[] battleSceneSelect = Date.BattleSceneSelect;
+        int selectMenu = 0;
+        bool clear;
+        while (true)
+        {
+            Draw.ClearBox(Date.map);
+            Draw.ClearBox(Date.selectCampMenu);
+            keyEvent.SelectMenu(battleSceneSelect, selectMenu, 70, 7, 3, true);
+
+            (bool sceneCheck, int selectMenuCheck) = keyEvent.keyCheck(keyInfo, selectMenu, battleSceneSelect.Length);
+
+            selectMenu = selectMenuCheck;
+            if (sceneCheck)
+            {
+                switch (selectMenu)
+                {
+                    case 0:
+                        BattleScene(keyInfo, selectMenu);
+                        return true;
+                    case 1:
+                        BattleScene(keyInfo, selectMenu);
+                        return true;
+                    case 2:
+                        BattleScene(keyInfo, selectMenu);
+                        return true;
+                    case 3:
+                        return false;
+                }
+            }
+        }
+    }
+
+
+    private static void BattleScene(ConsoleKeyInfo keyInfo, int battleScene)
+    {
+
+        Moster moster = null;
+        string[] mosterSelect;
+        int randomMonster = RandomMonster();
+
+        switch (battleScene)
+        {
+            case 0:
+                mosterSelect = Date.Evil_Rins[randomMonster];
+                moster = new Moster(mosterSelect[0], mosterSelect[1], mosterSelect[2], mosterSelect[3], mosterSelect[4],mosterSelect[5], mosterSelect[6]);
+                break;
+            case 1:
+                mosterSelect = Date.Undead[0];
+                moster = new Moster(mosterSelect[0], mosterSelect[1], mosterSelect[2], mosterSelect[3], mosterSelect[4], mosterSelect[5], mosterSelect[6]);
+                break;
+            case 2:
+                mosterSelect = Date.Devil[0];
+                moster = new Moster(mosterSelect[0], mosterSelect[1], mosterSelect[2], mosterSelect[3], mosterSelect[4], mosterSelect[5], mosterSelect[6]);
+                break;
+        }
+        
+        bool sceneEnd = false;
+        string[] battleSceneSelect = Date.BattleScene;
+        int selectMenu = 0;
+        int diceNum = 10;
+        int diceRollLimit = 2;
+        bool endSelect = true;
+
+        while (!sceneEnd)
+        {
+
+            Draw.ClearBox(Date.map);
+            Draw.MonsterInfo(moster);
+            int victoryProbability = Draw.BattleInfo(moster,diceNum);
+
+            Draw.ClearBox(Date.selectCampMenu);
+
+            
+
+            keyEvent.SelectMenu(battleSceneSelect, selectMenu, 70, 7, 3, endSelect);
+
+            (bool sceneCheck, int selectMenuCheck) = keyEvent.keyCheck(keyInfo, selectMenu, battleSceneSelect.Length);
+
+            selectMenu = selectMenuCheck;
+            if (sceneCheck)
+            {
+                switch (selectMenu)
+                {
+                    case 0:
+                        Draw.BattleEndScene(victoryProbability, moster, keyInfo);
+                        return;
+
+                    case 1:
+                        if(diceRollLimit > 0)
+                        {
+                            diceNum = SubMethod.RandomDice();
+                            
+                            if(--diceRollLimit == 0) selectMenu = 0;
+                            endSelect = false;
+                            Array.Resize(ref battleSceneSelect, battleSceneSelect.Length - 1);
+                        
+                        }
+                        break;
+                    case 2:
+                        //도망가기는 레벨에 따라 다름 확률이 다름
+                        //0~10까지 랜덤수를 뽑아 몬스터보다 높으면 도망 성공 플레이어 레벨따위는 장식임 ㅋㅋ
+                        Draw.ClearBox(Date.map);
+                        int runPoint = new Random().Next(0, 11);
+                        if (runPoint > moster.Level)
+                        {
+                            Console.ForegroundColor = ConsoleColor.Green;
+                            Draw.WriteText("당신은 무사히 도망쳐 나와 야영지로 돌아왔습니다.", 9, 13);
+                            Console.ResetColor();
+                            Draw.WriteText("계속 하시려면 'Enter'키를 입력하세요!", 15, 22);
+
+                            while (true)
+                            {
+                                keyInfo = Console.ReadKey(true);
+                                // X 키가 입력됨
+                                if (keyInfo.Key == ConsoleKey.Enter)
+                                {
+                                    break;
+                                }
+
+                            }
+                        }
+                        else
+                        {
+                            Console.ForegroundColor = ConsoleColor.Red;
+                            Draw.WriteText("당신은 도망에 실패하셨습니다. 전투가 시작됩니다.", 9, 13);
+                            Console.ResetColor();
+                            Draw.WriteText("계속 하시려면 'Enter'키를 입력하세요!", 15, 22);
+
+                            while (true)
+                            {
+                                keyInfo = Console.ReadKey(true);
+                                // X 키가 입력됨
+                                if (keyInfo.Key == ConsoleKey.Enter)
+                                {
+                                    break;
+                                }
+
+                            }
+                            Draw.BattleEndScene(victoryProbability, moster, keyInfo);
+                        }
+
+                        return;
+                }
+            }
+           
+        }
+        
+        return;
+    }
+
+
+
+    private static int RandomMonster()
+    {
+        Random random = new Random();
+        int selectMoster = random.Next(0,20);
+        if (selectMoster < 12) return 0;
+        else if (selectMoster < 18) return 1;
+        else return 2;
+    }
+
+    private static bool Rest(ConsoleKeyInfo keyInfo)
+    {
+        int xPositoin = 22;
+        int yPosition = 10;
+        int ypositionInfo = 13;
+        int selectMenu = 0;
+        int RestCondition = new Random().Next(0,111);
+        while (true)
+        {
+            Draw.ClearBox(Date.map);
+            Draw.ClearBox(Date.selectCampMenu);
+            keyEvent.SelectMenu(Date.Rest, selectMenu, 70, 7, 3, true);
+            (bool sceneCheck, int selectMenuCheck) = keyEvent.keyCheck(keyInfo, selectMenu, Date.campMenu.Length);
+            selectMenu = selectMenuCheck;
+            if (sceneCheck)
+            {
+                
+                switch (selectMenu)
+                {
+                    case 0:
+                        if(RestCondition == 110)
+                        {
+                            Draw.WriteText("너무 개운하다!", xPositoin, yPosition);
+
+                            Draw.WriteText($"최대 체력 증가! +{20}", xPositoin, ypositionInfo);
+                            GameScene.player.MaxHealth += 20;
+                            GameScene.player.Health += 30;
+                            if(GameScene.player.Health> GameScene.player.MaxHealth) GameScene.player.Health = GameScene.player.MaxHealth;
+                        }
+                        else if(RestCondition >10)
+                        {
+                            Draw.WriteText("정신이 맑아졌다!", xPositoin, yPosition);
+
+                            Draw.WriteText($"최대 체력 증가! +{RestCondition / 10}", xPositoin, ypositionInfo);
+                            GameScene.player.MaxHealth += RestCondition/10;
+                            GameScene.player.Health += 10+(RestCondition/10);
+                            if (GameScene.player.Health > GameScene.player.MaxHealth) GameScene.player.Health = GameScene.player.MaxHealth;
+                        }
+                        else
+                        {
+                            Draw.WriteText("아무일 없었다.!", xPositoin, yPosition);
+                            GameScene.player.Health += 10 + (RestCondition / 10);
+                            if (GameScene.player.Health > GameScene.player.MaxHealth) GameScene.player.Health = GameScene.player.MaxHealth;
+                        }
+                        break;
+                    case 1:
+                        if (RestCondition == 110)
+                        {
+                            Draw.WriteText("너무 개운하다!", xPositoin, yPosition);
+
+                            Draw.WriteText($"방어력 증가! +{10}", xPositoin, ypositionInfo);
+                            GameScene.player.Defense += 10;
+                            GameScene.player.Health += 10;
+                            if (GameScene.player.Health > GameScene.player.MaxHealth) GameScene.player.Health = GameScene.player.MaxHealth;
+                        }
+                        else if (RestCondition > 20)
+                        {
+                            Draw.WriteText("정신이 맑아졌다!", xPositoin, yPosition);
+
+                            Draw.WriteText($"방어력 증가! +{RestCondition / 20}", xPositoin, ypositionInfo);
+                            GameScene.player.Defense +=  RestCondition / 20;
+                            GameScene.player.Health += 10;
+                            if (GameScene.player.Health > GameScene.player.MaxHealth) GameScene.player.Health = GameScene.player.MaxHealth;
+                        }
+                        else
+                        {
+                            Draw.WriteText("아무일 없었다.!", xPositoin, yPosition);
+                            GameScene.player.Health += 10;
+                            if (GameScene.player.Health > GameScene.player.MaxHealth) GameScene.player.Health = GameScene.player.MaxHealth;
+                        }
+                        break;
+                    case 2:
+                        if (RestCondition == 110)
+                        {
+                            Draw.WriteText("너무 개운하다!", xPositoin, yPosition);
+
+                            Draw.WriteText($"공격력 증가! +{10}", xPositoin, ypositionInfo);
+                            GameScene.player.AttackForce += 10;
+                            GameScene.player.Health += 10;
+                            if (GameScene.player.Health > GameScene.player.MaxHealth) GameScene.player.Health = GameScene.player.MaxHealth;
+                        }
+                        else if (RestCondition > 20)
+                        {
+                            Draw.WriteText("정신이 맑아졌다!", xPositoin, yPosition);
+
+                            Draw.WriteText($"공격력 증가! +{RestCondition / 10}", xPositoin, ypositionInfo);
+                            GameScene.player.AttackForce += RestCondition / 20;
+                            GameScene.player.Health += 10;
+                            if (GameScene.player.Health > GameScene.player.MaxHealth) GameScene.player.Health = GameScene.player.MaxHealth;
+                        }
+                        else
+                        {
+                            Draw.WriteText("아무일 없었다.!", xPositoin, yPosition);
+                            GameScene.player.Health += 10;
+                            if (GameScene.player.Health > GameScene.player.MaxHealth) GameScene.player.Health = GameScene.player.MaxHealth;
+                        }
+                        break;
+                    case 3:
+                        if (RestCondition == 110)
+                        {
+                            Draw.WriteText("너무 개운하다!", xPositoin, yPosition);
+
+                            Draw.WriteText($"체력 대폭 회복! +{GameScene.player.MaxHealth-GameScene.player.Health}", xPositoin, ypositionInfo);
+                            GameScene.player.Health = GameScene.player.MaxHealth;
+                        }
+                        else if (RestCondition > 5)
+                        {
+                            Draw.WriteText("정신이 맑아졌다!", xPositoin, yPosition);
+
+                            Draw.WriteText($"체력 회복! +{RestCondition / 10}", xPositoin, ypositionInfo);
+                            GameScene.player.Health += (20+ (RestCondition / 5));
+                            if (GameScene.player.Health > GameScene.player.MaxHealth) GameScene.player.Health = GameScene.player.MaxHealth;
+                        }
+                        else
+                        {
+                            Draw.WriteText("아무일 없었다.!", xPositoin, yPosition);
+                            GameScene.player.Health += 20;
+                            if (GameScene.player.Health > GameScene.player.MaxHealth) GameScene.player.Health = GameScene.player.MaxHealth;
+                        }
+                        break;
+                    case 4:
+
+                        return false;
+                }
+                if (selectMenu != 4)
+                {
+                    SubMethod.SimplePlayerInfo(GameScene.player);
+                    Draw.WriteText("계속 하시려면 'Enter'키를 입력하세요!", 15, 22);
+
+                    while (true)
+                    {
+                        keyInfo = Console.ReadKey(true);
+                        // X 키가 입력됨
+                        if (keyInfo.Key == ConsoleKey.Enter)
+                        {
+                            return true;
+                        }
+
+                    }
+
+                }
+            }
+            
+        }
+    }
+
+    internal static void Dead(ConsoleKeyInfo keyInfo)
+    {
+        Draw.ClearBox (Date.map);
+        Console.ForegroundColor = ConsoleColor.Red;
+        Draw.WriteText("당신은 죽었습니다", 20, 13);
+        Console.ResetColor();
+        Draw.WriteText("계속 하시려면 'Enter'키를 입력하세요!", 15, 22);
+
+        while (true)
+        {
+            keyInfo = Console.ReadKey(true);
+            // X 키가 입력됨
+            if (keyInfo.Key == ConsoleKey.Enter)
+            {
+                break;
+            }
+
+        }
+    }
+
+
 
 
     internal static void PlayerInfo(Character.Player player, ConsoleKeyInfo keyInfo)
@@ -214,15 +774,17 @@ internal class subScene
         Draw.WriteText($"체력 : {player.Health}/{player.MaxHealth}", 4, 9);
         Draw.WriteText($"능력 : {player.Ability}", 4, 11);
 
-        if (Program.Equipment[0] > -1) Draw.WriteText($"공격력 : {player.AttackForce} + ({Program.weapons[Program.Equipment[0]].ItemAbility})", 4, 13);
+        if (GameScene.Equipment[0] > -1) Draw.WriteText($"공격력 : {player.AttackForce} + ({GameScene.weapons[GameScene.Equipment[0]].ItemAbility})", 4, 13);
         else Draw.WriteText($"공격력 : {player.AttackForce}", 4, 13);
 
 
-        if (Program.Equipment[1] > -1) Draw.WriteText($"방어력 : {player.Defense} + ({Program.armors[Program.Equipment[1]].ItemAbility})", 29, 13);
+        if (GameScene.Equipment[1] > -1) Draw.WriteText($"방어력 : {player.Defense} + ({GameScene.armors[GameScene.Equipment[1]].ItemAbility})", 29, 13);
         else Draw.WriteText($"방어력 : {player.Defense}", 29, 13);
 
 
         Draw.WriteText($"돈 : {player.Gold} 원", 4, 15);
+
+        Draw.WriteText($"추가 골드 획득량 : {player.GoldDrop}%",29,15);
         Draw.WriteText($"생존 요일 : {player.LiveDay}일차", 4, 17);
 
         while (true)
@@ -256,7 +818,7 @@ internal class subScene
                     {
                         Draw.WriteText(merchant[i], 30, 6+i);
                     }
-                    if (Program.player.LiveDay == 1) Draw.WriteText(Date.MerchantTxt[0], 5, 12);
+                    if (GameScene.player.LiveDay == 1) Draw.WriteText(Date.MerchantTxt[0], 5, 12);
                     else
                     {
                         if (randomTex >= 15)
@@ -281,7 +843,7 @@ internal class subScene
                     {
                         Draw.WriteText(merchant[i], 30, 6 + i);
                     }
-                    if (Program.player.LiveDay == 1) Draw.WriteText(Date.MerchantTxt[0], 5, 12);
+                    if (GameScene.player.LiveDay == 1) Draw.WriteText(Date.MerchantTxt[0], 5, 12);
                     else
                     {
                         if (randomTex <=10) Draw.WriteText(Date.MerchantTxt[5], 5, 12);
@@ -313,7 +875,7 @@ internal class subScene
                         
                         break;
                     case 1:
-                        Inventory.MyInventory(keyInfo, map, selectCampMenu, Program.weapons, Program.armors, "sellShop");
+                        Inventory.MyInventory(keyInfo, map, selectCampMenu, GameScene.weapons, GameScene.armors, "sellShop");
                         break;
                     case 2:
                         methodEnd = true;
@@ -323,7 +885,7 @@ internal class subScene
         }
     }
 
-    
+
 }
 internal class SubMethod
 {
@@ -371,13 +933,24 @@ internal class SubMethod
 
     internal static void SimplePlayerInfo(Player player)
     {
-        Draw.WriteText($"'{player.Name}' Level : {player.Level}", 4, 2);
+        Draw.WriteText($"Lv.     '{player.Name}' ", 4, 2);
+        UpdateLevel(player.Level);
         Draw.WriteText($"HEALTH : ", 28, 2);
         UpdateHp(player.Health);
-        Draw.WriteText($"/ {player.MaxHealth}", 42, 2);
+        UpdateMaxHealth(player.MaxHealth);
         Draw.WriteText($"GOLD : ", 55, 2);
         UpdateGold(player.Gold);
         Draw.WriteText($"LIVE DAY : {player.LiveDay}", 72, 2);
+    }
+
+    private static void UpdateLevel(int level)
+    {
+        Draw.WriteText($"{level}", 8, 2);
+    }
+
+    private static void UpdateMaxHealth(int maxHealth)
+    {
+        Draw.WriteText($"/ {maxHealth}", 42, 2);
     }
 
     internal static void UpdateHp(int hp)
@@ -395,13 +968,13 @@ internal class SubMethod
 
     internal static int UpdateShop(List<object> shop)
     {
-        int randomWeapon = new Random().Next(0,4);
+        int randomWeapon = new Random().Next(0,5);
         string[] weaponItem = Date.Weapon[randomWeapon];
         Weapon weapon = new Weapon(weaponItem[0], weaponItem[1], weaponItem[2], weaponItem[3], weaponItem[4]);
         shop.Add(weapon);
 
 
-        int randomArmor = new Random().Next(0,4);
+        int randomArmor = new Random().Next(0,5);
         string[] armorItem = Date.Armor[randomArmor];
         Armor armor = new Armor(armorItem[0], armorItem[1], armorItem[2], armorItem[3], armorItem[4]);
         shop.Add(armor);
@@ -453,6 +1026,14 @@ internal class SubMethod
 
 
         
+        
+
+        while (!methodEnd)
+        {
+            Draw.DrawBox(Date.selectCampMenu);
+            Draw.DrawBox(Date.map);
+            Draw.ClearBox(Date.selectCampMenu);
+            Draw.ClearBox(Date.map);
             Draw.ItemListHeader("재고");
             for (int i = 0; i < shop.Count; i++)
             {
@@ -473,10 +1054,6 @@ internal class SubMethod
                 }
             }
             Draw.WriteText("뒤로가기", 46, 22);
-        
-
-        while (!methodEnd)
-        {
             selectItemCorsor(shop.Count, selectItem, yPosition);
             
 
@@ -489,7 +1066,8 @@ internal class SubMethod
                 {
                     buyCheck[selectItem] = Buy(shop[selectItem], buyCheck[selectItem]);
                 }
-                methodEnd = true;
+                else methodEnd = true;
+
             }
         }
     }
@@ -501,15 +1079,14 @@ internal class SubMethod
         if(shop is Weapon)
         {
             Weapon shopItem = (Weapon)shop;
-            if(Program.player.Gold > shopItem.Price)
+            if(GameScene.player.Gold > shopItem.Price && buyCheck == false)
             {
-                if(Program.weapons.Count < 5)
+                if(GameScene.weapons.Count < 5)
                 {
                     if(buyCheck == false)
                     {
-                    Program.player.Gold -= shopItem.Price;
-                    Program.weapons.Add(shopItem);
-                    UpdateGold(Program.player.Gold);
+                    GameScene.player.Gold -= shopItem.Price;
+                    GameScene.weapons.Add(shopItem);
                     buyCheck = true;
                     }
                     else
@@ -524,24 +1101,28 @@ internal class SubMethod
                     Thread.Sleep(1000);
                 }
             }
-            else
+            else if(buyCheck==false)
             {
                 UpdateInfo("골드가 모자랍니다.", 33, 12);
+                Thread.Sleep(1000);
+            }
+            else
+            {
+                UpdateInfo("품절된 상품입니다.", 33, 12);
                 Thread.Sleep(1000);
             }
         }
         if(shop is Armor)
         {
             Armor shopItem = (Armor)shop;
-            if (Program.player.Gold > shopItem.Price)
+            if (GameScene.player.Gold > shopItem.Price && buyCheck == false)
             {
-                if (Program.armors.Count < 5)
+                if (GameScene.armors.Count < 5)
                 {
                     if (buyCheck == false)
                     {
-                        Program.player.Gold -= shopItem.Price;
-                        Program.armors.Add(shopItem);
-                        UpdateGold(Program.player.Gold);
+                        GameScene.player.Gold -= shopItem.Price;
+                        GameScene.armors.Add(shopItem);
                         buyCheck = true;
                     }
                     else
@@ -556,23 +1137,27 @@ internal class SubMethod
                     Thread.Sleep(1000);
                 }
             }
-            else
+            else if (buyCheck == false)
             {
                 UpdateInfo("골드가 모자랍니다.", 33, 12);
                 Thread.Sleep(1000);
             }
-            
+            else
+            {
+                UpdateInfo("품절된 상품입니다.", 33, 12);
+                Thread.Sleep(1000);
+            }
+
         }
         if(shop is Potion)
         {
             Potion shopItem = (Potion)shop;
-            if (Program.player.Gold > shopItem.Price)
+            if (GameScene.player.Gold > shopItem.Price && buyCheck == false)
             {
                 if (buyCheck == false)
                 { 
-                Program.player.Gold -= shopItem.Price;
-                shopItem.Use(Program.player);
-                UpdateGold(Program.player.Gold);
+                GameScene.player.Gold -= shopItem.Price;
+                shopItem.Use(GameScene.player);
                 buyCheck = true;
                 }
                 else
@@ -581,12 +1166,18 @@ internal class SubMethod
                     Thread.Sleep(1000);
                 }
             }
-            else
+            else if (buyCheck == false)
             {
                 UpdateInfo("골드가 모자랍니다.", 33, 12);
                 Thread.Sleep(1000);
             }
+            else
+            {
+                UpdateInfo("품절된 상품입니다.", 33, 12);
+                Thread.Sleep(1000);
+            }
         }
+        SimplePlayerInfo(GameScene.player);
         return buyCheck;
     }
 
@@ -602,6 +1193,8 @@ internal class SubMethod
             if (i == selectItem && selectItem != menuLength)
             {
                 Draw.WriteText($">", 4, yPosition + (i * 2));
+                Console.ForegroundColor = ConsoleColor.White;
+                
             }
 
             if (i != selectItem)
@@ -614,12 +1207,16 @@ internal class SubMethod
 
     internal static void Sell(ConsoleKeyInfo keyInfo, int menuLength, int itemClass)
     {
-        bool methodEnd = false;
         int yPosition = 11;
         int selectEquipment = 0;
 
-        while (!methodEnd)
+        while (true)
         {
+            Draw.ClearBox(Date.map);
+            if (itemClass == 0) Draw.WeaponList("착용","sellShop", yPosition);
+            else Draw.ArmorList("착용", "sellShop", yPosition);
+
+
             selectItemCorsor(menuLength, selectEquipment, yPosition);
 
 
@@ -628,53 +1225,48 @@ internal class SubMethod
             selectEquipment = selectMenu;
             if (selectEnter)
             {
-                if (Program.Equipment[itemClass] == selectEquipment)
-                {
-                    Program.Equipment[itemClass] = -1;
-                    if (itemClass == 0)
-                    {
-                        sellWeapon(selectEquipment);
-                    }
-                    else if (itemClass == 1)
-                    {
-                        sellArmor(selectEquipment);
-                    }
-                }
-                else if (selectEquipment != menuLength)
-                {
-                    if (itemClass == 0)
-                    {
-                        sellWeapon(selectEquipment);
-                    }
-                    else if (itemClass == 1)
-                    {
-                        sellArmor(selectEquipment);
-                    }
-                }
+                if (selectMenu == menuLength) return;
+                
+                if (GameScene.Equipment[itemClass] > selectEquipment) --GameScene.Equipment[itemClass];
+                else if (GameScene.Equipment[itemClass] == selectEquipment) GameScene.Equipment[itemClass] = -1;
+                
+                sellItem(selectEquipment,itemClass);
 
-                    methodEnd = true;
+                if(--menuLength==0) return;
+
+
             }
+
         }
     }
-    static void sellWeapon(int selectEquipment)
+    static void sellItem(int selectEquipment, int itemClass)
     {
-        UpdateGold(Program.player.Gold += ((Program.weapons[selectEquipment].Price / 10) * 7));
-        Program.weapons.RemoveAt(selectEquipment);
+        if (itemClass == 0)
+        {
+            GameScene.player.Gold += ((GameScene.weapons[selectEquipment].Price / 10) * 7);
+            GameScene.weapons.RemoveAt(selectEquipment);
+        }
+        else if (itemClass == 1)
+        {
+            GameScene.player.Gold += (GameScene.armors[selectEquipment].Price / 10) * 7;
+            GameScene.armors.RemoveAt(selectEquipment);
+        }
+        SimplePlayerInfo(GameScene.player);
     }
-    static void sellArmor(int selectEquipment)
-    {
-        UpdateGold(Program.player.Gold += (Program.armors[selectEquipment].Price / 10) * 7);
-        Program.armors.RemoveAt(selectEquipment);
-    }
+
 
     internal static void Enhance(ConsoleKeyInfo keyInfo, int menuLength, int itemClass)
     {
-        bool methodEnd = false;
+
         int yPosition = 11;
         int selectEquipment = 0;
 
-        while (!methodEnd)
+        while (true)
         {
+
+            if (itemClass == 0) Draw.WeaponList("MAX","Enhance", yPosition);
+            else Draw.ArmorList("MAX","Enhance", yPosition);
+
             selectItemCorsor(menuLength, selectEquipment, yPosition);
 
 
@@ -692,32 +1284,33 @@ internal class SubMethod
                     {
                         EnhanceArmor(selectEquipment);
                     }
-                
+                    SimplePlayerInfo (GameScene.player);
 
-                methodEnd = true;
+                if (selectMenu == menuLength) return;
+
             }
         }
     }
 
     private static void EnhanceWeapon(int selectEquipment)
     {
-        if (selectEquipment != Program.weapons.Count)
+        if (selectEquipment != GameScene.weapons.Count)
         {
-            if (Program.weapons[selectEquipment].Enhance < Program.weapons[selectEquipment].MaxEnhance)
+            if (GameScene.weapons[selectEquipment].Enhance < GameScene.weapons[selectEquipment].MaxEnhance)
             {
-                if (Program.player.Gold > Program.weapons[selectEquipment].EnhancePrice)
+                if (GameScene.player.Gold > GameScene.weapons[selectEquipment].EnhancePrice)
                 {
-                    UpdateGold(Program.player.Gold -= Program.weapons[selectEquipment].EnhancePrice);
-                    if (Program.weapons[selectEquipment].EnhancePrice < 10)
+                    GameScene.player.Gold -= GameScene.weapons[selectEquipment].EnhancePrice;
+                    if (GameScene.weapons[selectEquipment].EnhancePrice < 10)
                     {
-                        Program.weapons[selectEquipment].EnhancePrice += 3;
+                        GameScene.weapons[selectEquipment].EnhancePrice += 3;
                     }
                     else
                     {
-                        Program.weapons[selectEquipment].EnhancePrice += (Program.weapons[selectEquipment].EnhancePrice / 10);
+                        GameScene.weapons[selectEquipment].EnhancePrice += (GameScene.weapons[selectEquipment].EnhancePrice / 10);
                     }
-                    Program.weapons[selectEquipment].Enhance++;
-                    Program.weapons[selectEquipment].ItemAbility += Program.weapons[selectEquipment].Enhance;
+                    GameScene.weapons[selectEquipment].Enhance++;
+                    GameScene.weapons[selectEquipment].ItemAbility += GameScene.weapons[selectEquipment].Enhance;
                 }
                 else
                 {
@@ -741,23 +1334,23 @@ internal class SubMethod
     }
     private static void EnhanceArmor(int selectEquipment)
     {
-        if (selectEquipment != Program.armors.Count)
+        if (selectEquipment != GameScene.armors.Count)
         {
-            if (Program.armors[selectEquipment].Enhance < Program.armors[selectEquipment].MaxEnhance)
+            if (GameScene.armors[selectEquipment].Enhance < GameScene.armors[selectEquipment].MaxEnhance)
             {
-                if (Program.player.Gold > Program.armors[selectEquipment].EnhancePrice)
+                if (GameScene.player.Gold > GameScene.armors[selectEquipment].EnhancePrice)
                 {
-                    UpdateGold(Program.player.Gold -= Program.armors[selectEquipment].EnhancePrice);
-                    if (Program.armors[selectEquipment].EnhancePrice < 10)
+                    GameScene.player.Gold -= GameScene.armors[selectEquipment].EnhancePrice;
+                    if (GameScene.armors[selectEquipment].EnhancePrice < 10)
                     {
-                        Program.armors[selectEquipment].EnhancePrice += 3;
+                        GameScene.armors[selectEquipment].EnhancePrice += 3;
                     }
                     else
                     {
-                        Program.armors[selectEquipment].EnhancePrice += (Program.armors[selectEquipment].EnhancePrice / 10);
+                        GameScene.armors[selectEquipment].EnhancePrice += (GameScene.armors[selectEquipment].EnhancePrice / 10);
                     }
-                    Program.armors[selectEquipment].Enhance++;
-                    Program.armors[selectEquipment].ItemAbility += Program.armors[selectEquipment].Enhance;
+                    GameScene.armors[selectEquipment].Enhance++;
+                    GameScene.armors[selectEquipment].ItemAbility += GameScene.armors[selectEquipment].Enhance;
                 }
                 else
                 {
@@ -818,4 +1411,15 @@ internal class SubMethod
 
         return PlayerInfo;
     }
+
+    internal static int RandomDice()
+    {
+        int diceRoll = new Random().Next(1,21);
+        return diceRoll;
+    }
+
+
+
+
 }
+

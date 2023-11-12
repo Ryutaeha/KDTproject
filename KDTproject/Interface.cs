@@ -1,4 +1,18 @@
-﻿using System;
+﻿
+
+
+
+
+
+
+
+
+
+
+
+
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,12 +22,13 @@ using System.Threading.Tasks;
 
 internal interface ICharacter
 {
-    int Level { get; set; }
+    int Level { get; }
     string Name { get; }
     int Attack { get; }
-    int Defense { get; set; }
+    int AttackForce { get; }
+    int Defense { get; }
     int Health { get; set; }
-    int Gold { get; set; }
+    int Gold { get; }
     bool IsDead { get; }
     void BeDamaged(int damage);
 }

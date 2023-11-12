@@ -23,8 +23,27 @@ internal class Character
         public int Gold { get; set; }
         public bool IsDead => Health <= 0;
         public string Ability { get; }
-        public int LiveDay { get; set; } 
-
+        public int LiveDay { get; set; }
+        public int GoldDrop;
+        public int EXP;
+        public int NextEXP = 3;
+        public int LevelUp()
+        {
+            int up = 0;
+            while(EXP >= NextEXP)
+            {
+                NextEXP += (++Level+2);
+                MaxHealth += JobClass== "전사"? 10 : 5 ;
+                Health += 20;
+                if(Health > MaxHealth)
+                {
+                    Health = MaxHealth;
+                }
+                GoldDrop += JobClass == "전사" ? 5 : 10;
+                ++up;
+            }
+            return up;
+        }
         public void BeDamaged(int damage)
         {
             if (IsDead) { Console.WriteLine("사망씬 구현"); }
@@ -38,12 +57,13 @@ internal class Character
             Level = 1;
             MaxHealth = 100;
             Health = 100;
-            Gold = 100;
-            Defense = jobClass == "전사" ? new Random().Next(4, 7) : new Random().Next(0, 3);
-            AttackForce = JobClass == "전사" ? 5 : 10;
+            Gold = 100; 
+            Defense = jobClass == "전사" ? new Random().Next(14, 17) : new Random().Next(6, 8);
+            AttackForce = JobClass == "전사" ? 15 : 30;
             LiveDay = 1;
+            GoldDrop = JobClass == "전사" ? 0 : 10;
         }
-        public Player(string name, string jobClass, int level, int health, int maxHealth, int gold, int liveDay)
+        public Player(string name, string jobClass, int level, int health, int maxHealth, int gold, int liveDay,int attackForce)
         {
             JobClass = jobClass;
             Ability = JobClass == "전사" ? "레벨업시 최대체력이 증가합니다" : "레벨업시 골드 획득량이 증가합니다";
@@ -52,13 +72,15 @@ internal class Character
             MaxHealth = maxHealth;
             Health = health;
             Gold = gold;
-            AttackForce = JobClass == "전사" ? 5 : 0;
+            AttackForce = attackForce;
             LiveDay = liveDay;
         }
     }
     internal class Inventory
     {
-        
+
+
+
         public static void MyInventory(ConsoleKeyInfo keyInfo, int[] map, int[] selectCampMenu, List<CharacterSubMenu.Weapon> weapons, List<CharacterSubMenu.Armor> armors,string View)
         {
 
@@ -79,17 +101,12 @@ internal class Character
                             }
                             else
                             {
+                            
+                            Draw.WeaponList(enhance ,View, yPosition);
+                            
 
-                                Draw.ItemListHeader(enhance);
-                                for (int i = 0; i < weapons.Count; i++)
-                                {
-                                    Draw.ItemList(weapons[i], yPosition, i, View);
-                                    if (Program.Equipment[0]==i && View != "Enhance") Draw.WriteText($"[E]", 55, yPosition + (i * 2));
-                                    if(View == "Enhance") Draw.WriteText($"[{weapons[i].MaxEnhance}]", 55, yPosition + (i * 2));
-                            }
 
-                            Draw.WriteText("뒤로가기", 46, 22);
-                            }
+                        }
                             break;
 
                         case 1:
@@ -99,14 +116,9 @@ internal class Character
                             }
                             else
                             {
-                                Draw.ItemListHeader(enhance);
-                                for (int i = 0; i < armors.Count; i++)
-                                    {
-                                        Draw.ItemList(armors[i], yPosition, i, View);
-                                        if (Program.Equipment[1] == i) Draw.WriteText($"[E]", 55, yPosition + (i * 2));
-                                        if (View == "Enhance") Draw.WriteText($"[{armors[i].MaxEnhance}]", 55, yPosition + (i * 2));
-                            }
-                            Draw.WriteText("뒤로가기", 46, 22);
+                            
+                            Draw.ArmorList(enhance,View, yPosition);
+
                             }
                             break;
 
@@ -162,11 +174,31 @@ internal class Character
                 selectEquipment = selectMenu;
                 if (selectEnter)
                 {
-                    if(Program.Equipment[itemClass]== selectEquipment) Program.Equipment[itemClass] = -1;
-                    else if(selectEquipment != menuLength) Program.Equipment[itemClass] = selectEquipment;
-                    
-                    methodEnd = true;
+
+                    for (int i = 0; i < menuLength; i++)
+                    {
+                        if (i != selectEquipment)
+                        {
+                            Draw.WriteText($"   ", 55, yPosition + (i * 2));
+                        }
+                    }
+
+                    if (GameScene.Equipment[itemClass] == selectEquipment)
+                    {
+                        GameScene.Equipment[itemClass] = -1;
+                        Draw.WriteText($"   ", 55, yPosition + (selectEquipment * 2));
+                    }
+                    else if (selectEquipment != menuLength)
+                    {
+                         GameScene.Equipment[itemClass] = selectEquipment;
+                        Draw.WriteText($"[E]", 55, yPosition + (selectEquipment * 2));
+                    }
+                    else
+                    {
+                        return;
+                    }
                 }
+
             }
         }
     }
