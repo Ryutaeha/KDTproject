@@ -250,7 +250,7 @@ namespace KDTproject
 
         private static byte[] Encrypt(byte[] originalBytes, byte[] key, byte[] iv)
         {
-            
+            //비주얼스튜디오 Merge 테스트
             using (AesCryptoServiceProvider aesAlg = new AesCryptoServiceProvider())
             {
                 //대칭 키 암호화 생성
