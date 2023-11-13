@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-internal static class CharacterSubMenu
+internal static class Items
 {
     public class Weapon : IItem
     {

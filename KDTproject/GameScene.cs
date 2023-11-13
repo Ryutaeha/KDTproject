@@ -3,37 +3,38 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
+
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-using static Character;
+
 
 namespace KDTproject
 {
     internal class GameScene
-    {   
-
+    {
+          
 
         //가지고 있는 무기
-        public static List<CharacterSubMenu.Weapon> weapons = new List<CharacterSubMenu.Weapon>();
+        public static List<Items.Weapon> weapons = new List<Items.Weapon>();
         //가지고 있는 방어구
-        public static List<CharacterSubMenu.Armor> armors = new List<CharacterSubMenu.Armor>();
+        public static List<Items.Armor> armors = new List<Items.Armor>();
         public static int[] Equipment =  { -1, -1 };
-        internal static Player player = null;
+        internal static Character.Player player = null;
 
 
         public static ConsoleKeyInfo keyInfo = new ConsoleKeyInfo();
 
-        internal static void StartScene()
+        internal void StartScene()
         {
-            
+            Character character = new Character();
+
             AnimationSkip.firstLord = true;
             int selectMenu = 0;
             bool sceneEnd = false;
             string[] startLogo = Date.startLogo;
             string[] startMenu = Date.startMenu;
-            string[] playerCreate = null;
+            
             while (!sceneEnd)
             {
                 Draw.ClearBox(Date.windowWidth);
@@ -51,7 +52,7 @@ namespace KDTproject
                         Thread.Sleep(200);
                     }
                     //x키를 눌렸을시 스킵
-                    keyEvent.Skip("firstLord");
+                    KeyEvent.Skip("firstLord");
 
                     Console.ResetColor();
                 }
@@ -74,10 +75,10 @@ namespace KDTproject
                 Draw.DrawBox(selectBtn);
 
                 // 선택 메뉴 출력
-                keyEvent.SelectMenu(startMenu, selectMenu, 42, 19, 1, false);
+                Draw.SelectMenu(startMenu, selectMenu, 42, 19, 1, false);
 
                 // 플레이어의 선택을 Key이벤트로 보내주는 메서드
-                (bool sceneCheck, int selectMenuCheck) = keyEvent.keyCheck(keyInfo, selectMenu, startMenu.Length);
+                (bool sceneCheck, int selectMenuCheck) = KeyEvent.keyCheck(keyInfo, selectMenu, startMenu.Length);
 
                 selectMenu = selectMenuCheck;
                 if (sceneCheck)
@@ -85,8 +86,8 @@ namespace KDTproject
                     switch (selectMenu)
                     {
                         case 0:
-                            playerCreate = SubMethod.PlayerCreate();
-                            player = new Player(playerCreate[0], playerCreate[1]);
+                            string[] create = character.PlayerCreate();
+                            player = new Character.Player(create[0], create[1]);
                             CampScene();
                             break;
                         case 1:
@@ -96,12 +97,12 @@ namespace KDTproject
                                 weapons = saveData.Weapons;
                                 armors = saveData.Armors;
                                 Equipment = saveData.Equipment;
-                                player = new Player(saveData.Player);
+                                player = new Character.Player(saveData.Player);
                                 CampScene();
                             }
                             else
                             {
-                                SubMethod.UpdateInfo("정보 없음", 40, 12);
+                                Draw.UpdateInfo("정보 없음", 40, 12);
                                 Thread.Sleep(1000);
                             }
                             
@@ -121,22 +122,25 @@ namespace KDTproject
         // 
         internal static void CampScene()
         {
+            Battle battle = new();
+            Inventory inventory = new();
+            Shop shop = new();
 
-            List<object> shop = new List<object>();
+            List<object> shopItem = new List<object>();
             bool[] buyCheck = null;
 
 
             bool newGame;
             int selectMenu = 0;
             bool sceneEnd = false;
-            int[,] mapPosition = SubMethod.MapPosition();
+            int[,] mapPosition = Draw.MapPosition();
             
 
             while (!sceneEnd)
             {
                 if (player.IsDead)
                 {
-                    subScene.Dead(keyInfo);
+                    battle.Dead(keyInfo);
                     return;
                 }
                 Draw.ClearBox(Date.windowWidth);
@@ -149,20 +153,20 @@ namespace KDTproject
                 Draw.DrawBox(Date.map);
 
                 // 맵 선택창 띄우기
-                keyEvent.selectMap(mapPosition, selectMenu);
+                Draw.selectMap(mapPosition, selectMenu);
 
                 //캐릭터 정보 출력
-                SubMethod.SimplePlayerInfo(player);
+                Draw.SimplePlayerInfo(player);
 
                 // 메뉴 선택박스 그리기
 
                 Draw.DrawBox(Date.selectCampMenu);
 
                 //메뉴창 띄우는 메서드
-                keyEvent.SelectMenu(Date.campMenu, selectMenu, 70, 7, 3, true);
+                Draw.SelectMenu(Date.campMenu, selectMenu, 70, 7, 3, true);
 
                 //메뉴 선택 메서드
-                (bool sceneCheck, int selectMenuCheck) = keyEvent.keyCheck(keyInfo, selectMenu, Date.campMenu.Length);
+                (bool sceneCheck, int selectMenuCheck) = KeyEvent.keyCheck(keyInfo, selectMenu, Date.campMenu.Length);
 
                 selectMenu = selectMenuCheck;
                 if (sceneCheck)
@@ -173,30 +177,30 @@ namespace KDTproject
                             //플레이어 정보
                             Draw.ClearBox(Date.map);
                             Draw.ClearBox(Date.selectCampMenu);
-                            subScene.PlayerInfo(player, keyInfo);
+                            Draw.PlayerInfo(player, keyInfo);
                             break;
                         case 1:
                             //인벤토리
                             Draw.ClearBox(Date.map);
-                            Inventory.MyInventory(keyInfo, Date.map, Date.selectCampMenu, weapons, armors, "inventory");
+                            inventory.MyInventory(keyInfo, weapons, armors, "inventory");
                             break;
                         case 2:
                             //상점
-                            subScene.Shop(keyInfo, Date.map, Date.selectCampMenu, shop, buyCheck);
+                            shop.ShopInfo(keyInfo, Date.map, Date.selectCampMenu, shopItem, buyCheck);
                             break;
                         case 3:
                             //강화
                             Draw.ClearBox(Date.map);
-                            Inventory.MyInventory(keyInfo, Date.map, Date.selectCampMenu, weapons, armors, "Enhance");
+                            inventory.MyInventory(keyInfo, weapons, armors, "Enhance");
                             break;
                         case 4:
                             //탐험
-                            if (subScene.BattleKindSelect(keyInfo))
+                            if (battle.BattleKindSelect(keyInfo))
                             {
                                 selectMenu = 0;
-                                mapPosition = SubMethod.MapPosition();
-                                shop.Clear();
-                                int buyCheckCount = SubMethod.UpdateShop(shop);
+                                mapPosition = Draw.MapPosition();
+                                shopItem.Clear();
+                                int buyCheckCount = shop.UpdateShop(shopItem);
                                 buyCheck = new bool[buyCheckCount];
                                 player.LiveDay++;
                             }
@@ -236,8 +240,9 @@ namespace KDTproject
             // 암호화
             byte[] encryptedBytes = Encrypt(originalBytes, key, iv);
 
-            string directoryPath = @"C:\saveTest";
 
+            string directoryPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..\\..\\..\\dates");
+            string filePath = Path.Combine(directoryPath, "Save.json");
             // 폴더가 없으면 생성
             if (!Directory.Exists(directoryPath))
             {
@@ -245,7 +250,7 @@ namespace KDTproject
             }
 
             // 파일에 쓰기
-            File.WriteAllBytes(@"C:\saveTest\path2.json", encryptedBytes);
+            File.WriteAllBytes(filePath, encryptedBytes);
         }
 
         private static byte[] Encrypt(byte[] originalBytes, byte[] key, byte[] iv)
@@ -274,7 +279,8 @@ namespace KDTproject
 
         private static SaveData JsonLoad()
         {
-            string filePath = @"C:\saveTest\path2.json";
+            string directoryPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..\\..\\..\\dates");
+            string filePath = Path.Combine(directoryPath, "Save.json");
             SaveData saveData = null;
             // 파일이 존재하는지 확인
             if (File.Exists(filePath))
@@ -324,5 +330,7 @@ namespace KDTproject
             }
         }
     }
+
+    
 }
 

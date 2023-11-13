@@ -85,131 +85,45 @@ internal class Character
             LiveDay = savedate.LiveDay;
         }
     }
-    internal class Inventory
+    internal string[] PlayerCreate()
     {
-
-
-
-        public static void MyInventory(ConsoleKeyInfo keyInfo, int[] map, int[] selectCampMenu, List<CharacterSubMenu.Weapon> weapons, List<CharacterSubMenu.Armor> armors,string View)
+        string[] PlayerInfo = new string[2];
+        bool check = false;
+        while (!check)
         {
-
-            bool methodEnd = false;
-            int inventorySelect= 0 ;
-            string[] inventoryMenu = Date.inventory;
-            string enhance = View == "Enhance" ? "MAX" : "착용";
-            while (!methodEnd)
+            Draw.DrawBox(Date.info);
+            Draw.ClearBox(Date.info);
+            Draw.WriteText("당신의 이름은 무엇입니까? (최대 4글자)", 26, 10);
+            Draw.WriteText("이름 : ", 35, 15);
+            Console.SetCursorPosition(42, 15);
+            string playerName = null;
+            playerName = Console.ReadLine();
+            if (playerName != "" && playerName.Length <= 4)
             {
-                    Draw.ClearBox(map);
-                    int yPosition = 11;
-                    switch (inventorySelect)
-                    {
-                        case 0:
-                            if(weapons.Count == 0)
-                            {
-                                Draw.WriteText("보유중인 무기가 없습니다.", 20,15);
-                            }
-                            else
-                            {
-                            
-                            Draw.WeaponList(enhance ,View, yPosition);
-                            
+                PlayerInfo[0] = playerName;
+                check = true;
+            }
+        }
+        check = false;
+        while (!check)
+        {
+            Draw.DrawBox(Date.info);
+            Draw.ClearBox(Date.info);
+            Draw.WriteText("당신의 직업은 무엇입니까?", 32, 10);
+            Draw.WriteText("전사 or 사냥꾼", 38, 12);
+            Draw.WriteText("직업 : ", 35, 15);
+            Console.SetCursorPosition(42, 15);
+            string playerJob = null;
+            playerJob = Console.ReadLine();
+            if (playerJob == "전사" || playerJob == "사냥꾼")
+            {
+                PlayerInfo[1] = playerJob;
+                check = true;
 
-
-                        }
-                            break;
-
-                        case 1:
-                            if(armors.Count == 0)
-                            {
-                                Draw.WriteText("보유중인 방어구가 없습니다.", 20, 15);
-                            }
-                            else
-                            {
-                            
-                            Draw.ArmorList(enhance,View, yPosition);
-
-                            }
-                            break;
-
-                        
-                    }
-
-                Draw.ClearBox(selectCampMenu);
-
-                keyEvent.SelectMenu(inventoryMenu, inventorySelect, 70, 7, 3, true);
-
-                (bool selectEnter, int selectMenu) = keyEvent.keyCheck(keyInfo, inventorySelect, inventoryMenu.Length);
-
-                inventorySelect = selectMenu;
-
-                if (selectEnter)
-                {
-                    switch (selectMenu)
-                    {
-                        case 0:
-                            if(View == "inventory" && weapons.Count > 0) Equipment(keyInfo, weapons.Count, inventorySelect);
-                            if (View == "sellShop" && weapons.Count > 0) SubMethod.Sell(keyInfo, weapons.Count, inventorySelect);
-                            if (View == "Enhance" && weapons.Count > 0) SubMethod.Enhance(keyInfo, weapons.Count, inventorySelect);
-                            break;
-                        case 1:
-                            if (View == "inventory" && armors.Count > 0) Equipment(keyInfo, armors.Count, inventorySelect);
-                            if (View == "sellShop" && armors.Count > 0) SubMethod.Sell(keyInfo, armors.Count, inventorySelect);
-                            if (View == "Enhance" && armors.Count > 0) SubMethod.Enhance(keyInfo, armors.Count, inventorySelect);
-                            break;
-                        case 2:
-                            methodEnd = true;
-                            break;
-                    }
-                }
-
-                
-                
             }
         }
 
-        public static void Equipment(ConsoleKeyInfo keyInfo, int menuLength, int itemClass)
-        {
-            bool methodEnd=false;
-            int yPosition = 11;
-            int selectEquipment = 0;
-
-            while (!methodEnd)
-            {
-                SubMethod.selectItemCorsor(menuLength, selectEquipment, yPosition);
-                
-
-                (bool selectEnter, int selectMenu) = keyEvent.keyCheck(keyInfo, selectEquipment, menuLength+1);
-
-                selectEquipment = selectMenu;
-                if (selectEnter)
-                {
-
-                    for (int i = 0; i < menuLength; i++)
-                    {
-                        if (i != selectEquipment)
-                        {
-                            Draw.WriteText($"   ", 55, yPosition + (i * 2));
-                        }
-                    }
-
-                    if (GameScene.Equipment[itemClass] == selectEquipment)
-                    {
-                        GameScene.Equipment[itemClass] = -1;
-                        Draw.WriteText($"   ", 55, yPosition + (selectEquipment * 2));
-                    }
-                    else if (selectEquipment != menuLength)
-                    {
-                         GameScene.Equipment[itemClass] = selectEquipment;
-                        Draw.WriteText($"[E]", 55, yPosition + (selectEquipment * 2));
-                    }
-                    else
-                    {
-                        return;
-                    }
-                }
-
-            }
-        }
+        return PlayerInfo;
     }
 }
 

@@ -141,8 +141,8 @@ internal class AnimationSkip
 
 internal class SaveData
 {
-    public List<CharacterSubMenu.Weapon> Weapons { get; set; }
-    public List<CharacterSubMenu.Armor> Armors { get; set; }
+    public List<Items.Weapon> Weapons { get; set; }
+    public List<Items.Armor> Armors { get; set; }
     public int[] Equipment { get; set; }
     public Character.Player Player { get; set; }
 }

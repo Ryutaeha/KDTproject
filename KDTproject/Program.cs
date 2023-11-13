@@ -16,7 +16,8 @@ namespace KDTproject
         {
             Console.CursorVisible = false;
             Console.Title = "KDT PROJECT HOME";
-            GameScene.StartScene();
+            GameScene gameScene = new GameScene();
+            gameScene.StartScene();
 
             /*
             string[] args2 = { "테스트", "전사" };
