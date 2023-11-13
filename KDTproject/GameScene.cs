@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+
 using static Character;
 
 namespace KDTproject
@@ -82,11 +85,25 @@ namespace KDTproject
                     {
                         case 0:
                             playerCreate = SubMethod.PlayerCreate();
-                            CampScene(selectMenu, playerCreate);
+                            player = new Player(playerCreate[0], playerCreate[1]);
+                            CampScene();
                             break;
                         case 1:
-                            SubMethod.UpdateInfo("구현중...", 40, 12);
-                            Thread.Sleep(1000);
+                            SaveData saveData = JsonLoad();
+                            if (saveData != null)
+                            {
+                                weapons = saveData.Weapons;
+                                armors = saveData.Armors;
+                                Equipment = saveData.Equipment;
+                                player = new Player(saveData.Player);
+                                CampScene();
+                            }
+                            else
+                            {
+                                SubMethod.UpdateInfo("정보 없음", 40, 12);
+                                Thread.Sleep(1000);
+                            }
+                            
                             break;
                         case 2:
                             Console.SetCursorPosition(0, 26);
@@ -98,8 +115,10 @@ namespace KDTproject
 
         }
 
+
+
         // 
-        internal static void CampScene(int gmaeCheck, string[] playerCreate)
+        internal static void CampScene()
         {
 
             List<object> shop = new List<object>();
@@ -110,14 +129,7 @@ namespace KDTproject
             int selectMenu = 0;
             bool sceneEnd = false;
             int[,] mapPosition = SubMethod.MapPosition();
-            switch (gmaeCheck)
-            {
-                case 0:
-                    player = new Character.Player(playerCreate[0], playerCreate[1]);
-                    break;
-                case 1:
-                    break;
-            }
+            
 
             while (!sceneEnd)
             {
@@ -190,12 +202,56 @@ namespace KDTproject
                             
                             break;
                         case 5:
+                            JsonSave();
+                            
                             //게임 끝내기
                             Console.SetCursorPosition(0, 26);
                             sceneEnd = true;
                             break;
                     }
                 }
+            }
+        }
+
+        private static void JsonSave()
+        {
+            SaveData saveData = new SaveData
+            {
+                Weapons = weapons,
+                Armors = armors,
+                Equipment = Equipment,
+                Player = player
+            };
+            string saveDatas = JsonConvert.SerializeObject(saveData, Formatting.Indented);
+
+            string directoryPath = @"C:\saveTest";
+
+            // 폴더가 없으면 생성
+            if (!Directory.Exists(directoryPath))
+            {
+                Directory.CreateDirectory(directoryPath);
+            }
+
+            // 파일에 쓰기
+            File.WriteAllText(@"C:\saveTest\path2.json", saveDatas);
+        }
+        private static SaveData JsonLoad()
+        {
+            string filePath = @"C:\saveTest\path2.json";
+            SaveData saveData = null;
+            // 파일이 존재하는지 확인
+            if (File.Exists(filePath))
+            {
+                // 파일이 존재하면 내용을 읽어와서 JSON 객체로 파싱
+                string jsonContent = File.ReadAllText(filePath);
+                saveData = JsonConvert.DeserializeObject<SaveData>(jsonContent);
+                // 이제 jsonObject를 사용하여 필요한 작업을 수행
+                // 예: weapons, armors, Equipment, player 등의 정보를 추출
+                return saveData;
+            }
+            else
+            {
+                return saveData;
             }
         }
     }

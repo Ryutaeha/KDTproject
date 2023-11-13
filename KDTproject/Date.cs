@@ -139,3 +139,10 @@ internal class AnimationSkip
     public static bool firstLord;
 }
 
+internal class SaveData
+{
+    public List<CharacterSubMenu.Weapon> Weapons { get; set; }
+    public List<CharacterSubMenu.Armor> Armors { get; set; }
+    public int[] Equipment { get; set; }
+    public Character.Player Player { get; set; }
+}

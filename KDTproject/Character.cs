@@ -1,4 +1,5 @@
 ﻿using KDTproject;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,25 +9,29 @@ using System.Threading.Tasks;
 
 internal class Character
 {
-
+    
     public class Player : ICharacter
     {
+
+        public Player() { }
+
         //플래이어 캐릭터의 직업
-        public string JobClass { get; }
-        public int Level { get; set; }
-        public string Name { get; }
-        public int Attack => new Random().Next((JobClass == "전사" ? 5 : 0) + AttackForce, (JobClass == "전사" ? 10 : 20) + AttackForce);
-        public int AttackForce { get; set; }
-        public int Defense { get; set; }
-        public int Health { get; set; }
-        public int MaxHealth {  get; set; }
-        public int Gold { get; set; }
-        public bool IsDead => Health <= 0;
-        public string Ability { get; }
-        public int LiveDay { get; set; }
-        public int GoldDrop;
-        public int EXP;
-        public int NextEXP = 3;
+
+        [JsonProperty(Order = 1)] public string JobClass { get; set; }
+        [JsonProperty(Order = 2)] public int Level { get; set; }
+        [JsonProperty(Order = 3)] public string Name { get; set; }
+        [JsonProperty(Order = 4)] public int Attack => new Random().Next((JobClass == "전사" ? 5 : 0) + AttackForce, (JobClass == "전사" ? 10 : 20) + AttackForce);
+        [JsonProperty(Order = 5)] public int AttackForce { get; set; }
+        [JsonProperty(Order = 6)] public int Defense { get; set; }
+        [JsonProperty(Order = 7)] public int Health { get; set; }
+        [JsonProperty(Order = 8)] public int MaxHealth {  get; set; }
+        [JsonProperty(Order = 9)] public int Gold { get; set; }
+        [JsonProperty(Order = 10)] public bool IsDead => Health <= 0;
+        [JsonProperty(Order = 11)] public string Ability { get; }
+        [JsonProperty(Order = 12)] public int LiveDay { get; set; }
+        [JsonProperty(Order = 13)] public int GoldDrop { get; set; }
+        [JsonProperty(Order = 14)] public int EXP { get; set; }
+        [JsonProperty(Order = 15)] public int NextEXP = 3 ;
         public int LevelUp()
         {
             int up = 0;
@@ -63,17 +68,21 @@ internal class Character
             LiveDay = 1;
             GoldDrop = JobClass == "전사" ? 0 : 10;
         }
-        public Player(string name, string jobClass, int level, int health, int maxHealth, int gold, int liveDay,int attackForce)
+        public Player(Player savedate)
         {
-            JobClass = jobClass;
+            JobClass = savedate.JobClass;
             Ability = JobClass == "전사" ? "레벨업시 최대체력이 증가합니다" : "레벨업시 골드 획득량이 증가합니다";
-            Name = name;
-            Level = level;
-            MaxHealth = maxHealth;
-            Health = health;
-            Gold = gold;
-            AttackForce = attackForce;
-            LiveDay = liveDay;
+            Name = savedate.Name;
+            Level = savedate.Level;
+            Defense = savedate.Defense;
+            MaxHealth = savedate.MaxHealth;
+            Health = savedate.Health;
+            Gold = savedate.Gold;
+            GoldDrop = savedate.GoldDrop;
+            EXP = savedate.EXP;
+            NextEXP = savedate.NextEXP;
+            AttackForce = savedate.AttackForce;
+            LiveDay = savedate.LiveDay;
         }
     }
     internal class Inventory
