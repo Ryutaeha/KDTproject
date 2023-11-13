@@ -224,7 +224,7 @@ namespace KDTproject
                 Player = player
             };
             string saveDatas = JsonConvert.SerializeObject(saveData, Formatting.Indented);
-            // 키 생성 (이 키는 안전한 곳에 보관되어야 함)
+            // 키 생성 어따보관하지? DB 연동하기엔 C#은 어캐하는지 몰라유
             byte[] key = Encoding.UTF8.GetBytes("0123456789ABCDEF");
 
             // 초기화 벡터 생성 (암호화된 데이터를 시작하는 지점을 지정)
@@ -250,13 +250,16 @@ namespace KDTproject
 
         private static byte[] Encrypt(byte[] originalBytes, byte[] key, byte[] iv)
         {
+            
             using (AesCryptoServiceProvider aesAlg = new AesCryptoServiceProvider())
             {
+                //대칭 키 암호화 생성
                 aesAlg.Key = key;
                 aesAlg.IV = iv;
 
                 ICryptoTransform encryptor = aesAlg.CreateEncryptor(aesAlg.Key, aesAlg.IV);
 
+                //대칭 암호화키를 이용하면 메모리 암호화
                 using (MemoryStream msEncrypt = new MemoryStream())
                 {
                     using (CryptoStream csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write))
@@ -291,8 +294,8 @@ namespace KDTproject
                 string decryptedData = Encoding.UTF8.GetString(decryptedBytes);
 
                 saveData = JsonConvert.DeserializeObject<SaveData>(decryptedData);
-                // 이제 jsonObject를 사용하여 필요한 작업을 수행
-                // 예: weapons, armors, Equipment, player 등의 정보를 추출
+
+
             }
             return saveData;
             
@@ -302,11 +305,13 @@ namespace KDTproject
         {
             using (AesCryptoServiceProvider aesAlg = new AesCryptoServiceProvider())
             {
+                //대칭 키 암호화 생성
                 aesAlg.Key = key;
                 aesAlg.IV = iv;
 
                 ICryptoTransform decryptor = aesAlg.CreateDecryptor(aesAlg.Key, aesAlg.IV);
 
+                //대칭 암호화키를 참조하여 암호화된 메모리 복호화
                 using (MemoryStream msDecrypt = new MemoryStream())
                 {
                     using (CryptoStream csDecrypt = new CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Write))
