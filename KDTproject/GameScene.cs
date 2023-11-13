@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
@@ -223,6 +224,17 @@ namespace KDTproject
                 Player = player
             };
             string saveDatas = JsonConvert.SerializeObject(saveData, Formatting.Indented);
+            // 키 생성 (이 키는 안전한 곳에 보관되어야 함)
+            byte[] key = Encoding.UTF8.GetBytes("0123456789ABCDEF");
+
+            // 초기화 벡터 생성 (암호화된 데이터를 시작하는 지점을 지정)
+            byte[] iv = Encoding.UTF8.GetBytes("ABCDEFGHABCDEFGH");
+
+            // 문자열을 바이트 배열로 변환
+            byte[] originalBytes = Encoding.UTF8.GetBytes(saveDatas);
+
+            // 암호화
+            byte[] encryptedBytes = Encrypt(originalBytes, key, iv);
 
             string directoryPath = @"C:\saveTest";
 
@@ -233,8 +245,30 @@ namespace KDTproject
             }
 
             // 파일에 쓰기
-            File.WriteAllText(@"C:\saveTest\path2.json", saveDatas);
+            File.WriteAllBytes(@"C:\saveTest\path2.json", encryptedBytes);
         }
+
+        private static byte[] Encrypt(byte[] originalBytes, byte[] key, byte[] iv)
+        {
+            using (AesCryptoServiceProvider aesAlg = new AesCryptoServiceProvider())
+            {
+                aesAlg.Key = key;
+                aesAlg.IV = iv;
+
+                ICryptoTransform encryptor = aesAlg.CreateEncryptor(aesAlg.Key, aesAlg.IV);
+
+                using (MemoryStream msEncrypt = new MemoryStream())
+                {
+                    using (CryptoStream csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write))
+                    {
+                        csEncrypt.Write(originalBytes, 0, originalBytes.Length);
+                        csEncrypt.FlushFinalBlock();
+                    }
+                    return msEncrypt.ToArray();
+                }
+            }
+        }
+
         private static SaveData JsonLoad()
         {
             string filePath = @"C:\saveTest\path2.json";
@@ -242,16 +276,46 @@ namespace KDTproject
             // 파일이 존재하는지 확인
             if (File.Exists(filePath))
             {
-                // 파일이 존재하면 내용을 읽어와서 JSON 객체로 파싱
-                string jsonContent = File.ReadAllText(filePath);
-                saveData = JsonConvert.DeserializeObject<SaveData>(jsonContent);
+                byte[] key = Encoding.UTF8.GetBytes("0123456789ABCDEF");
+
+                // 초기화 벡터 생성 (암호화 시 사용된 초기화 벡터와 동일해야 함)
+                byte[] iv = Encoding.UTF8.GetBytes("ABCDEFGHABCDEFGH");
+
+                // 파일 내용을 바이트 배열로 읽기
+                byte[] encryptedBytes = File.ReadAllBytes(filePath);
+
+                // 복호화
+                byte[] decryptedBytes = Decrypt(encryptedBytes, key, iv);
+
+                // 복호화된 데이터를 문자열로 변환
+                string decryptedData = Encoding.UTF8.GetString(decryptedBytes);
+
+                saveData = JsonConvert.DeserializeObject<SaveData>(decryptedData);
                 // 이제 jsonObject를 사용하여 필요한 작업을 수행
                 // 예: weapons, armors, Equipment, player 등의 정보를 추출
-                return saveData;
             }
-            else
+            return saveData;
+            
+        }
+
+        private static byte[] Decrypt(byte[] encryptedBytes, byte[] key, byte[] iv)
+        {
+            using (AesCryptoServiceProvider aesAlg = new AesCryptoServiceProvider())
             {
-                return saveData;
+                aesAlg.Key = key;
+                aesAlg.IV = iv;
+
+                ICryptoTransform decryptor = aesAlg.CreateDecryptor(aesAlg.Key, aesAlg.IV);
+
+                using (MemoryStream msDecrypt = new MemoryStream())
+                {
+                    using (CryptoStream csDecrypt = new CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Write))
+                    {
+                        csDecrypt.Write(encryptedBytes, 0, encryptedBytes.Length);
+                        csDecrypt.FlushFinalBlock();
+                    }
+                    return msDecrypt.ToArray();
+                }
             }
         }
     }
