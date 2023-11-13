@@ -77,6 +77,6 @@ C# 콘솔창 기반 RPG + JSON을 AES를 더한
 - 긱종 이벤트씬 등장시 애니메이션 제작
 - 기존 데이터 script형식을 JSON형식으로 교체 및 DB 업로드 해 DB 로드 방식으로 교체
 - 코드 깔끔하게 바꾸기
-- 처음에 무지성 static 시작으로 인해 대부분의 메서드가 static 해결하기 -  Code-Organization에서 해결
+- 처음에 무지성 static 시작으로 인해 대부분의 메서드가 static 해결하기 -  Code-Organization에서 해결 23.11.13
 - 여관 이용시 금액 지불 안내 및 지불 구현
 - 팀플 준비하기
